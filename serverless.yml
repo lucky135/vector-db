@@ -1,0 +1,121 @@
+service: vector-copilot-service
+
+frameworkVersion: '4'
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: python3.10
+  architecture: x86_64
+  stage: ${env:stage, 'dev'}
+  timeout: 30
+  memorySize: 2048
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - s3:*
+          Resource:
+            - arn:aws:s3:::${env:STATIC_FILES_BUCKET_NAME}
+            - arn:aws:s3:::${env:STATIC_FILES_BUCKET_NAME}/*
+  vpc:
+    securityGroupIds:
+      - ${env:SECURITY_GROUP}
+    subnetIds:
+      - ${env:SUBNET_1}
+      - ${env:SUBNET_2}
+      - ${env:SUBNET_3}
+  versionFunctions: false
+  tracing:
+    lambda: true
+    apiGateway: true
+  apiGateway:
+    metrics: true
+    binaryMediaTypes:
+      - '*/*'
+  logs:
+    restApi: true
+  stage: ${env:STAGE}
+  region: ${env:REGION}
+
+functions:
+  api:
+    handler: wsgi_handler.handler
+    events:
+      - http:
+          path: /
+          method: ANY
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - Authorization
+              - X-Source
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - Authorization
+              - X-Source
+    environment:
+      ORIGIN: "*"
+      ENV_NAME: ${env:STAGE}
+      PARTY_SERVICE_URL: ${env:PARTY_SERVICE_URL}
+      STATIC_FILES_BUCKET_NAME: ${env:STATIC_FILES_BUCKET_NAME}
+      PRSMGPT_ENV: ${env:PRSMGPT_ENV}
+      DJANGO_SECRET_KEY: ${env:DJANGO_SECRET_KEY}
+      
+plugins:
+  - serverless-wsgi
+  - serverless-python-requirements
+  - serverless-dotenv-plugin
+
+custom:
+  wsgi:
+    app: src.core.wsgi.application
+  pythonRequirements:
+    fileName: requirements.txt
+
+package:
+  exclude:
+    - venv/**
+    - __pycache__/*
+    - node_modules/**
+    - pip-cache/**
+    - README.md
+    - pytest.ini
+    - conftest.py
+    - .venv
+    - .venv.example
+    - package.json
+    - package-lock.json
+
+resources:
+  Resources:
+    StaticFilesBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${env:STATIC_FILES_BUCKET_NAME}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: false
+          BlockPublicPolicy: false
+          IgnorePublicAcls: false
+          RestrictPublicBuckets: false
+
+    StaticFilesBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket:
+          Ref: StaticFilesBucket
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Sid: PublicReadGetObject
+              Action: "s3:GetObject"
+              Effect: Allow
+              Principal: "*"
+              Resource: "arn:aws:s3:::${env:STATIC_FILES_BUCKET_NAME}/*"
