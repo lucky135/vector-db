@@ -8,6 +8,7 @@ from src.api.completion.chat_with_embeddings import (
     chat_with_embedding_adv,
 )
 from src.api.embeddings.generate_embeddings_for_text import create_embeddings_for_text
+from src.api.embeddings.fetch_relevant_embeddings import fetch_relevant_embeddings
 
 urlpatterns = [
     path("vectorcopilot/chat/completion/", view=chat_with_prompt),
@@ -21,4 +22,5 @@ urlpatterns = [
     path(
         "vectorcopilot/chat/completion/embeddings/prompt/", view=chat_with_embedding_adv
     ),
+    path("vectorcopilot/embeddings/fetch/", view=fetch_relevant_embeddings),
 ]
