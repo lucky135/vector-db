@@ -12,7 +12,7 @@ from src.api.common.vectorstore.vectorstore import VectorStoreWrapper
 from src.api.completion.impl.embedding_model_wrapper import create_embeddings_model
 
 EMBEDDINGS_MODEL_NAME = "text-embedding-ada-002"
-CHUNK_SIZE = 500
+CHUNK_SIZE = 5000
 CHUNK_OVERLAP = 50
 
 
