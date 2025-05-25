@@ -79,25 +79,27 @@ def fetch_relevant_embeddings(request):
         collection_count = vectorstore_wrapper.get_total_collection_count()
 
         if collection_count > 0:
-            # Get vector store
-            vectorstore = vectorstore_wrapper.vectorstore
+            # Create embeddings for the query
+            query_embedding = embeddings_model.embed_query(query)
 
-            # Set search parameters
-            search_kwargs = {"k": top_k, "score_threshold": score_threshold}
+            # Set up search parameters
+            search_kwargs = {
+                "retriever_threshold": score_threshold,
+                "file_name_list": file_name_list,
+                "k": top_k,
+            }
 
-            if file_name_list:
-                search_kwargs["filter"] = {"source": {"$in": file_name_list}}
+            # Get a retriever from the vectorstore
+            retriever = vectorstore_wrapper.vectorstore.get_retriever(**search_kwargs)
 
-            # Perform similarity search with scores
-            results = vectorstore.similarity_search_with_relevance_scores(
-                query, **search_kwargs
-            )
+            # Get relevant documents
+            docs = retriever.get_relevant_documents(query)
 
             # Process results
-            for doc, score in results:
+            for doc in docs:
                 response["documents"].append(doc.page_content)
                 response["metadata"].append(doc.metadata)
-                # The score is relevance, we don't need to return the actual embedding vectors
+                # We don't return actual embedding vectors for security/privacy reasons
 
             response["message"] = "[SUCCESS]: Relevant embeddings fetched successfully"
             return JsonResponse(response, status=200)
